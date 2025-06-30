@@ -5,24 +5,24 @@ import (
 	"fmt"
 	"io"
 	"log"
-	"os"
+	"net"
 	"strings"
 )
 
 const inputFile = "message.txt"
 
-func getLinedChannel(f io.ReadCloser) <-chan string {
+func getLinedChannel(c net.Conn) <-chan string {
 	currentLineContents := ""
 	res := make(chan string)
+
 	go func() {
-		defer f.Close()
 		defer close(res)
 		for {
 			buffer := make([]byte, 8, 8)
-			n, err := f.Read(buffer)
+			n, err := c.Read(buffer)
 			if err != nil {
 				if currentLineContents != "" {
-					fmt.Printf("read: %s\n", currentLineContents)
+					res <- fmt.Sprintf("%s\n", currentLineContents)
 					currentLineContents = ""
 				}
 				if errors.Is(err, io.EOF) {
@@ -46,42 +46,25 @@ func getLinedChannel(f io.ReadCloser) <-chan string {
 
 func main() {
 
-	file, err := os.Open(inputFile)
+	tcp_listner, err := net.Listen("tcp", "127.0.0.1:42069")
 	if err != nil {
-		log.Fatal("Cannot open the file: ", err)
+		log.Fatal("Unable to open a TCP connection: ", err)
 	}
-	defer file.Close()
-	fmt.Printf("Reading data from %s\n", inputFile)
-	fmt.Println("=====================================")
-	// curr_output := ""
-	/*
-		for {
-			read_data := make([]byte, 8)
-			eof, err := file.Read(read_data)
-			if eof == 0 {
-				break
-			}
-			if err != nil {
-				log.Fatal("Cannot read 8 bytes from file ", err)
-			}
-			str := string(read_data[:eof])
-			parts := strings.Split(str, "\n")
+	defer tcp_listner.Close()
+	fmt.Println("Connected on Port:42069")
 
-			curr_output += parts[0]
-
-			if len(parts) == 1 {
-				continue
-			}
-
-			fmt.Printf("read: %s\n", curr_output)
-			curr_output = parts[1]
-
+	for {
+		conn, err := tcp_listner.Accept()
+		if err != nil {
+			log.Fatal("Cannot form a TCP connection: ", err)
 		}
-		fmt.Printf("read: %s\n", curr_output) // printing the last end */
+		fmt.Println("Connection has been accepted")
+		tcp_channel := getLinedChannel(conn)
 
-	file_channel := getLinedChannel(file)
-	for val := range file_channel {
-		fmt.Printf("read: %s\n", val)
+		for val := range tcp_channel {
+			fmt.Printf("%s\n", val)
+		}
+		fmt.Println("Channel is Closed")
 	}
 
 }
