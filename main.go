@@ -11,6 +11,39 @@ import (
 
 const inputFile = "message.txt"
 
+func getLinedChannel(f io.ReadCloser) <-chan string {
+	currentLineContents := ""
+	res := make(chan string)
+	go func() {
+		defer f.Close()
+		defer close(res)
+		for {
+			buffer := make([]byte, 8, 8)
+			n, err := f.Read(buffer)
+			if err != nil {
+				if currentLineContents != "" {
+					fmt.Printf("read: %s\n", currentLineContents)
+					currentLineContents = ""
+				}
+				if errors.Is(err, io.EOF) {
+					break
+				}
+				fmt.Printf("error: %s\n", err.Error())
+				break
+			}
+			str := string(buffer[:n])
+			parts := strings.Split(str, "\n")
+			for i := 0; i < len(parts)-1; i++ {
+				res <- fmt.Sprintf("%s%s", currentLineContents, parts[i])
+				currentLineContents = ""
+			}
+			currentLineContents += parts[len(parts)-1]
+		}
+	}()
+
+	return res
+}
+
 func main() {
 
 	file, err := os.Open(inputFile)
@@ -46,27 +79,9 @@ func main() {
 		}
 		fmt.Printf("read: %s\n", curr_output) // printing the last end */
 
-	currentLineContents := ""
-	for {
-		buffer := make([]byte, 8, 8)
-		n, err := file.Read(buffer)
-		if err != nil {
-			if currentLineContents != "" {
-				fmt.Printf("read: %s\n", currentLineContents)
-				currentLineContents = ""
-			}
-			if errors.Is(err, io.EOF) {
-				break
-			}
-			fmt.Printf("error: %s\n", err.Error())
-			break
-		}
-		str := string(buffer[:n])
-		parts := strings.Split(str, "\n")
-		for i := 0; i < len(parts)-1; i++ {
-			fmt.Printf("read: %s%s\n", currentLineContents, parts[i])
-			currentLineContents = ""
-		}
-		currentLineContents += parts[len(parts)-1]
+	file_channel := getLinedChannel(file)
+	for val := range file_channel {
+		fmt.Printf("read: %s\n", val)
 	}
+
 }
