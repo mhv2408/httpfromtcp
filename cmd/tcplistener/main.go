@@ -9,9 +9,9 @@ import (
 	"strings"
 )
 
-const inputFile = "message.txt"
+const port = ":42069"
 
-func getLinedChannel(c net.Conn) <-chan string {
+func getLinesChannel(c net.Conn) <-chan string {
 	currentLineContents := ""
 	res := make(chan string)
 
@@ -46,25 +46,26 @@ func getLinedChannel(c net.Conn) <-chan string {
 
 func main() {
 
-	tcp_listner, err := net.Listen("tcp", "127.0.0.1:42069")
+	listener, err := net.Listen("tcp", port)
 	if err != nil {
-		log.Fatal("Unable to open a TCP connection: ", err)
+		log.Fatalf("error listening for TCP traffic: %s\n", err.Error())
 	}
-	defer tcp_listner.Close()
-	fmt.Println("Connected on Port:42069")
+	defer listener.Close()
 
+	fmt.Println("Listening for TCP traffic on", port)
 	for {
-		conn, err := tcp_listner.Accept()
+		conn, err := listener.Accept()
 		if err != nil {
-			log.Fatal("Cannot form a TCP connection: ", err)
+			log.Fatalf("error: %s\n", err.Error())
 		}
-		fmt.Println("Connection has been accepted")
-		tcp_channel := getLinedChannel(conn)
+		fmt.Println("Accepted connection from", conn.RemoteAddr())
 
-		for val := range tcp_channel {
-			fmt.Printf("%s\n", val)
+		linesChan := getLinesChannel(conn)
+
+		for line := range linesChan {
+			fmt.Println(line)
 		}
-		fmt.Println("Channel is Closed")
+		fmt.Println("Connection to ", conn.RemoteAddr(), "closed")
 	}
 
 }
