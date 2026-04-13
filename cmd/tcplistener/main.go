@@ -9,63 +9,74 @@ import (
 	"strings"
 )
 
-const port = ":42069"
+const inputFilePath = "message.txt"
 
-func getLinesChannel(c net.Conn) <-chan string {
-	currentLineContents := ""
-	res := make(chan string)
+func getLinesChannel(f io.ReadCloser) <-chan string {
+	
+	line_channel := make(chan string)
+	
 
 	go func() {
-		defer close(res)
+		defer f.Close()
+		defer close(line_channel)
+		currentLine := ""
 		for {
-			buffer := make([]byte, 8, 8)
-			n, err := c.Read(buffer)
-			if err != nil {
-				if currentLineContents != "" {
-					res <- fmt.Sprintf("%s\n", currentLineContents)
-					currentLineContents = ""
+			b := make([]byte, 8, 8)
+			n, err := f.Read(b)
+			if err!=nil{
+				if currentLine != ""{
+					line_channel <- currentLine
 				}
-				if errors.Is(err, io.EOF) {
+				if errors.Is(err, io.EOF){
 					break
 				}
 				fmt.Printf("error: %s\n", err.Error())
-				break
 			}
-			str := string(buffer[:n])
+			str := string(b[:n])
 			parts := strings.Split(str, "\n")
-			for i := 0; i < len(parts)-1; i++ {
-				res <- fmt.Sprintf("%s%s", currentLineContents, parts[i])
-				currentLineContents = ""
-			}
-			currentLineContents += parts[len(parts)-1]
-		}
-	}()
 
-	return res
+			for i :=0; i<len(parts)-1; i++{
+				line_channel <- fmt.Sprintf("%s%s", currentLine, parts[i])
+				currentLine = ""
+			}
+			currentLine += parts[len(parts)-1]
+
+		}
+		
+	}()
+	return line_channel
+
 }
 
+const port = ":42069"
 func main() {
-
-	listener, err := net.Listen("tcp", port)
-	if err != nil {
-		log.Fatalf("error listening for TCP traffic: %s\n", err.Error())
+	
+	// start a tcp connection
+	ln, err := net.Listen("tcp", port)
+	if err!=nil{
+		// handle error
+		log.Fatalf("cannot listen to the tcp connection: %s", err)
 	}
-	defer listener.Close()
-
-	fmt.Println("Listening for TCP traffic on", port)
+	defer ln.Close()
+	fmt.Println("Listening to TCP traffic on", port)
 	for {
-		conn, err := listener.Accept()
-		if err != nil {
-			log.Fatalf("error: %s\n", err.Error())
+		conn, err := ln.Accept()
+		
+		if err!=nil{
+			log.Fatalf("Unable to accept the connection: %s", err)
 		}
-		fmt.Println("Accepted connection from", conn.RemoteAddr())
-
-		linesChan := getLinesChannel(conn)
-
-		for line := range linesChan {
+		fmt.Println("Accepting connection from", conn.RemoteAddr())
+		result := getLinesChannel(conn)
+		for line := range result{
 			fmt.Println(line)
-		}
-		fmt.Println("Connection to ", conn.RemoteAddr(), "closed")
-	}
 
+		}
+		fmt.Println("Connection to ", conn.RemoteAddr(), "closed!")
+		for line := range result{
+			fmt.Println(line) // remainig data after cloising the connection
+		}
+	}
+	
+	
+	
 }
