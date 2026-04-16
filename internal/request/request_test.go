@@ -2,7 +2,6 @@ package request
 
 import (
 	"io"
-	"strings"
 	"testing"
 
 	"github.com/stretchr/testify/assert"
@@ -55,11 +54,20 @@ func TestRequestLineParse(t *testing.T) {
 	assert.Equal(t, "1.1", r.RequestLine.HttpVersion)
 
 	// Test: Invalid number of parts in request line
-	_, err = RequestFromReader(strings.NewReader("/coffee HTTP/1.1\r\nHost: localhost:42069\r\nUser-Agent: curl/7.81.0\r\nAccept: */*\r\n\r\n"))
+	reader = &chunkReader{
+		data: "/coffee HTTP/1.1\r\nHost: localhost:42069\r\nUser-Agent: curl/7.81.0\r\nAccept: */*\r\n\r\n",
+		numBytesPerRead: 2,
+	}
+	_, err = RequestFromReader(reader)
 	require.Error(t, err)
 
+	reader = &chunkReader{
+		data: "POST /coffee HTTP/1.1\r\nHost: localhost:42069\r\nUser-Agent: curl/7.81.0\r\nAccept: */*\r\n\r\n",
+		numBytesPerRead: 21,
+	}
+
 	// Test: Good Post Request with path
-	r, err = RequestFromReader(strings.NewReader("POST /coffee HTTP/1.1\r\nHost: localhost:42069\r\nUser-Agent: curl/7.81.0\r\nAccept: */*\r\n\r\n"))
+	r, err = RequestFromReader(reader)
 	require.NoError(t, err)
 	require.NotNil(t, r)
 	assert.Equal(t, "POST", r.RequestLine.Method)
@@ -67,14 +75,26 @@ func TestRequestLineParse(t *testing.T) {
 	assert.Equal(t, "1.1", r.RequestLine.HttpVersion)
 
 	// Test: Invalid method (Out of order request line)
-	r, err = RequestFromReader(strings.NewReader("/coffee GET HTTP/1.1\r\nHost: localhost:42069\r\nUser-Agent: curl/7.81.0\r\nAccept: */*\r\n\r\n"))
+	reader = &chunkReader{
+		data: "/coffee GET HTTP/1.1\r\nHost: localhost:42069\r\nUser-Agent: curl/7.81.0\r\nAccept: */*\r\n\r\n",
+		numBytesPerRead: 4,
+	}
+	r, err = RequestFromReader(reader)
 	require.Error(t, err)
 
 	// Test: Invalid version in Request line
-	r, err = RequestFromReader(strings.NewReader("GET /coffee HTTP/2.1\r\nHost: localhost:42069\r\nUser-Agent: curl/7.81.0\r\nAccept: */*\r\n\r\n"))
+	reader = &chunkReader{
+		data: "GET /coffee HTTP/2.1\r\nHost: localhost:42069\r\nUser-Agent: curl/7.81.0\r\nAccept: */*\r\n\r\n",
+		numBytesPerRead: 5,
+	}
+	r, err = RequestFromReader(reader)
 	require.Error(t, err)
 
 		// Test: Invalid version in Request line
-	_, err = RequestFromReader(strings.NewReader("OPTIONS /prime/rib TCP/1.1\r\nHost: localhost:42069\r\nUser-Agent: curl/7.81.0\r\nAccept: */*\r\n\r\n"))
+		reader = &chunkReader{
+		data: "OPTIONS /prime/rib TCP/1.1\r\nHost: localhost:42069\r\nUser-Agent: curl/7.81.0\r\nAccept: */*\r\n\r\n",
+		numBytesPerRead: 7,
+	}
+	_, err = RequestFromReader(reader)
 	require.Error(t, err)
 }
