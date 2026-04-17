@@ -2,6 +2,7 @@ package request
 
 import (
 	"io"
+	"strings"
 	"testing"
 
 	"github.com/stretchr/testify/assert"
@@ -97,4 +98,20 @@ func TestRequestLineParse(t *testing.T) {
 	}
 	_, err = RequestFromReader(reader)
 	require.Error(t, err)
+}
+
+func TestProcessOnce_Normal(t *testing.T) {
+	reader := strings.NewReader("GET / HTTP/1.1\r\n")
+
+	buf := make([]byte, 1024)
+
+	buf, idx, err := ProcessOnce(reader, buf)
+
+	if err != nil {
+		t.Fatalf("unexpected error: %v", err)
+	}
+
+	if idx == 0 {
+		t.Fatalf("expected progress but got none")
+	}
 }
