@@ -4,9 +4,13 @@ import (
 	"bytes"
 	"fmt"
 	"strings"
+	"unicode"
 )
 
 type Headers map[string] string
+var specialChars = map[rune]bool{'!':true, '#':true, '$':true, '%':true, '&':true, '|':true, '~':true, '^':true, '*':true, '`':true, '_':true, '+':true, '\'':true, '-':true, '.':true,}
+
+// !, #, $, %, &, ', *, +, -, ., ^, _, `, |, ~
 
 // constructor to make headers
 func NewHeaders() Headers {
@@ -37,11 +41,25 @@ func (h Headers) Parse(data []byte) (n int, done bool, err error){
 		return 0, false, fmt.Errorf("spaces before fieldName or betwixt colon")
 	}
 	fieldName, fieldValue := strings.TrimSpace(rawFieldName), strings.TrimSpace(rawFieldValue)
+	// check if fieldName comtains any special characters
+	for _, c := range fieldName{
+		if !unicode.IsNumber(c) && !unicode.IsLetter(c) && !specialChars[c]{
+			fmt.Println("inside error unicoe")
+			return 0, false, fmt.Errorf("Invalid filed name: %c", c)
+		}
+	}
+	
 	h.Set(fieldName, fieldValue)
 	return idx + 2, false, nil
 
 }
 func (h Headers)Set(key, value string){
+	key = strings.ToLower(key)
 	h[key] = value
+}
+
+func (h Headers)Get(key string) string{
+	key = strings.ToLower((key))
+	return h[key]
 }
 

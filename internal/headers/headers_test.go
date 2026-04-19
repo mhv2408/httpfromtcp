@@ -14,7 +14,7 @@ func TestHeaders(t *testing.T){
 	n, done, err := headers.Parse(data)
 	require.NoError(t, err)
 	require.NotNil(t, headers)
-	assert.Equal(t, "localhost:42069", headers["Host"])
+	assert.Equal(t, "localhost:42069", headers.Get("host"))
 	assert.Equal(t, 23, n)
 	assert.False(t, done)
 
@@ -32,7 +32,7 @@ func TestHeaders(t *testing.T){
 	n, done, err = headers.Parse(data)
 	require.NoError(t, err)
 	require.NotNil(t, headers)
-	assert.Equal(t, "localhost:42069", headers["Host"])
+	assert.Equal(t, "localhost:42069", headers.Get("host"))
 	assert.Equal(t, 38, n)
 	assert.False(t, done)
 
@@ -42,8 +42,8 @@ func TestHeaders(t *testing.T){
 	n, done, err = headers.Parse(data)
 	require.NoError(t, err)
 	require.NotNil(t, headers)
-	assert.Equal(t, "localhost:42069", headers["host"])
-	assert.Equal(t, "curl/7.81.0", headers["User-Agent"])
+	assert.Equal(t, "localhost:42069", headers.Get("host"))
+	assert.Equal(t, "curl/7.81.0", headers.Get("User-AGent"))
 	assert.Equal(t, 25, n)
 	assert.False(t, done)
 
@@ -56,5 +56,13 @@ func TestHeaders(t *testing.T){
 	assert.Empty(t, headers)
 	assert.Equal(t, 2, n)
 	assert.True(t, done)
+
+	// Test: Invalid Header Key
+	headers = NewHeaders()
+	data = []byte("H©st: localhost:42069\r\n\r\n")
+	n, done, err = headers.Parse(data)
+	require.Error(t, err)
+	assert.Equal(t, 0, n)
+	assert.False(t, done)
 
 }
