@@ -20,18 +20,19 @@ const crlf = "\r\n"
 func (h Headers) Parse(data []byte) (n int, done bool, err error){
 	idx := bytes.Index(data, []byte(crlf))
 	if idx == -1{
-		// not enough data need more
-		return 0, false, fmt.Errorf("cannot find crlf: Need more data")
+		// not enough data need more - cannot find crlf
+		return 0, false, nil
 	}
 	// found the crlf
 	if idx == 0{ // no headers
 		return 2, true, nil
 	}
-	// find the colon (:)
+	/* find the colon (:)
 	colon_idx := bytes.Index(data[:idx], []byte(":"))
 	if colon_idx==-1{
+		fmt.Println("Inside index error: ", string(data), idx)
 		return 0, false, fmt.Errorf("can't find seperator colon ':'")
-	}
+	}*/
 	// split by colon(:)
 	parts := bytes.SplitN(data[:idx], []byte(":"), 2)
 
@@ -44,7 +45,6 @@ func (h Headers) Parse(data []byte) (n int, done bool, err error){
 	// check if fieldName comtains any special characters
 	for _, c := range fieldName{
 		if !unicode.IsNumber(c) && !unicode.IsLetter(c) && !specialChars[c]{
-			fmt.Println("inside error unicoe")
 			return 0, false, fmt.Errorf("Invalid filed name: %c", c)
 		}
 	}
