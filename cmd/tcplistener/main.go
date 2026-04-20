@@ -40,5 +40,7 @@ func main() {
 		for headerName, headerValue := range request.Headers{
 			fmt.Printf("- %s: %s\n", headerName, headerValue)
 		}
+		fmt.Println("Body:")
+		fmt.Printf("%s\n", string(request.Body))
 	}
 }
