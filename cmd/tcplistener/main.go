@@ -36,5 +36,9 @@ func main() {
 		fmt.Println("- Method:", request.RequestLine.Method)
 		fmt.Println("- Target:",request.RequestLine.RequestTarget)
 		fmt.Println("- Version:",request.RequestLine.HttpVersion)
+		fmt.Println("Headers:")
+		for headerName, headerValue := range request.Headers{
+			fmt.Printf("- %s: %s\n", headerName, headerValue)
+		}
 	}
 }

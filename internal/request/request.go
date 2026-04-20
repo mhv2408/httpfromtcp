@@ -42,10 +42,10 @@ func (r *Request)parseSingle(data []byte)(int, error){
 		}
 		r.RequestLine = *requestLine
 		r.RequestStatus = requestStateParsingHeaders
-		fmt.Println("Parsed bytes from request line: ", parsedBytes)
+		// fmt.Println("Parsed bytes from request line: ", parsedBytes)
 		return parsedBytes, nil
 	case requestStateParsingHeaders:
-		fmt.Println("data inside headers: ", string(data))
+		// fmt.Println("data inside headers: ", string(data))
 		n, done, err := r.Headers.Parse(data)
 		if err!=nil{
 			return 0, err
@@ -76,7 +76,7 @@ func (r *Request) parse(data []byte) (int, error){
 			return totalBytesParsed, nil
 		}
 		totalBytesParsed += n
-		fmt.Println("totalBytesParsed: ", n)
+		// fmt.Println("totalBytesParsed: ", n)
 	}
 	return totalBytesParsed, nil
 }
