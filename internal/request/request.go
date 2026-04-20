@@ -6,6 +6,7 @@ import (
 	"fmt"
 	"httpfromtcp/internal/headers"
 	"io"
+	"strconv"
 	"strings"
 )
 
@@ -14,11 +15,14 @@ const (
 	Initialized RequestStatus = iota
 	Done
 	requestStateParsingHeaders
+	parsingBody
 )
 type Request struct{
 	RequestLine RequestLine
 	RequestStatus RequestStatus 
 	Headers headers.Headers
+	Body []byte
+	bodyLengthRead int
 }
 type RequestLine struct{
 	HttpVersion string
@@ -54,10 +58,33 @@ func (r *Request)parseSingle(data []byte)(int, error){
 			return 0, nil
 		}
 		if done{
-			r.RequestStatus = Done
+			r.RequestStatus = parsingBody
 			return n, nil
 		}
+
 		return n, nil
+
+	case parsingBody:
+		str_len := r.Headers.Get("Content-Length")
+		if str_len == ""{ // no value..meaning no content-length header (nothing to parse)
+			r.RequestStatus = Done
+			return 0, nil
+		}
+		content_len , err := strconv.Atoi(str_len)
+		if err != nil{
+			return 0, err
+		}
+		r.Body = append(r.Body, data...)
+		r.bodyLengthRead += len(data)
+
+		if r.bodyLengthRead > content_len{ // more than the parsed len
+			return 0, fmt.Errorf("length of body is does not match Content-Length")
+		}
+		if r.bodyLengthRead == content_len{
+			r.RequestStatus = Done
+		}
+		
+		return len(data), nil
 
 	case Done:
 		return 0, fmt.Errorf("error: trying to read data in a done state")
