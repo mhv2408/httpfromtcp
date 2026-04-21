@@ -2,6 +2,7 @@ package server
 
 import (
 	"fmt"
+	"httpfromtcp/internal/response"
 	"log"
 	"net"
 	"sync/atomic"
@@ -57,15 +58,22 @@ func (s *Server) listen(){
 }
 
 func (s *Server) Handle(conn net.Conn){
+	/*
 	response := "HTTP/1.1 200 OK" + "\r\n" +
 "Content-Type: text/plain" + "\r\n" +
 "Content-Length: 13" +
 "\r\n\r\n"+
-"Hello World!\n"
-	_, err := conn.Write([]byte(response))
+"Hello World!\n" */
+	// Write the start line
+	err := response.WriteStatusLine(conn, 200)
 	if err != nil{
-		log.Fatalf("unable to write response from conn: %v", err)
+		log.Fatalf("error writing status line: %v", err)
 	}
-
+	// Write Body
+	def_headers := response.GetDefaultHeaders(0)
+	err = response.WriteHeaders(conn, def_headers)
+	if err!=nil{
+		log.Fatalf("error writing headers: %v", err)
+	}
 	defer conn.Close()
 }
