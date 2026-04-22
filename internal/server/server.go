@@ -1,12 +1,16 @@
 package server
 
 import (
+	"bytes"
 	"fmt"
+	"httpfromtcp/internal/request"
 	"httpfromtcp/internal/response"
+	"io"
 	"log"
 	"net"
 	"sync/atomic"
 )
+
 type ServerState int
 const (
 	running ServerState=iota
@@ -14,10 +18,25 @@ const (
 )
 type Server struct{
 	listner net.Listener
-	clossed atomic.Bool
+	closed atomic.Bool
+	handler Handler
 }
 
-func Serve(port int)(*Server, error){
+type Handler func (w io.Writer, r *request.Request) *HandlerError
+
+type HandlerError struct{
+	StatusCode response.StatusCode
+	Message string 
+}
+func writeError(w io.Writer, he *HandlerError){
+	response.WriteStatusLine(w, he.StatusCode)
+
+	default_headers := response.GetDefaultHeaders(len(he.Message))
+
+	response.WriteHeaders(w, default_headers)
+	w.Write([]byte(he.Message))
+}
+func Serve(port int, handler Handler)(*Server, error){
 	lsnr, err := net.Listen("tcp",  fmt.Sprintf(":%d",port))
 	if err != nil{
 		return nil, err
@@ -25,6 +44,7 @@ func Serve(port int)(*Server, error){
 	
 	newServer := &Server{
 		listner: lsnr,
+		handler: handler,
 	}
 
 	go newServer.listen()
@@ -33,7 +53,7 @@ func Serve(port int)(*Server, error){
 }
 
 func (s *Server) Close() error{
-	s.clossed.Store(true)
+	s.closed.Store(true)
 	if s.listner != nil{
 		return s.listner.Close()
 	}
@@ -45,35 +65,39 @@ func (s *Server) listen(){
 		conn, err := s.listner.Accept()
 		
 		if err!=nil{
-			if s.clossed.Load(){
+			if s.closed.Load(){
 				return
 			}
 			log.Printf("unable to accept the connection: %v", err)
 			continue
 		}
-		go s.Handle(conn)
+		go s.handle(conn)
 
 	}
 	
 }
 
-func (s *Server) Handle(conn net.Conn){
-	/*
-	response := "HTTP/1.1 200 OK" + "\r\n" +
-"Content-Type: text/plain" + "\r\n" +
-"Content-Length: 13" +
-"\r\n\r\n"+
-"Hello World!\n" */
-	// Write the start line
-	err := response.WriteStatusLine(conn, 200)
+
+func (s *Server) handle(conn net.Conn){
+
+	// Parse the request
+	request, err := request.RequestFromReader(conn)
 	if err != nil{
-		log.Fatalf("error writing status line: %v", err)
+		writeError(conn, &HandlerError{StatusCode: 500, Message: err.Error()})
 	}
-	// Write Body
-	def_headers := response.GetDefaultHeaders(0)
-	err = response.WriteHeaders(conn, def_headers)
-	if err!=nil{
-		log.Fatalf("error writing headers: %v", err)
+	// create a new bytes buffer
+	writer := bytes.NewBuffer(nil)
+	he := s.handler(writer, request)
+	if he != nil{
+		writeError(writer, he)
+		conn.Write(writer.Bytes())
+		return
 	}
+	b := writer.Bytes()
+	response.WriteStatusLine(conn, response.Success)
+	headers := response.GetDefaultHeaders(len(b))
+	response.WriteHeaders(conn, headers)
+	conn.Write(b)
+
 	defer conn.Close()
 }

@@ -8,7 +8,7 @@ import (
 
 type StatusCode int
 const (
-	Ok StatusCode = 200
+	Success StatusCode = 200
 	BadRequest StatusCode = 400
 	InternalServerError StatusCode = 500
 )
@@ -17,19 +17,19 @@ func WriteStatusLine(w io.Writer, statusCode StatusCode) error{
 	response := ""
 	switch statusCode{
 	
-	case 200:
+	case Success:
 		response = "HTTP/1.1 200 OK\r\n"
 		_, err := w.Write([]byte(response))
 		if err != nil{
 			return err
 		}
-	case 400:
+	case BadRequest:
 		response = "HTTP/1.1 400 Bad Request\r\n"
 		_, err := w.Write([]byte(response))
 		if err != nil{
 			return err
 		}
-	case 500:
+	case InternalServerError:
 		response = "HTTP/1.1 500 Internal Server Error\r\n"
 		_, err := w.Write([]byte(response))
 		if err != nil{
