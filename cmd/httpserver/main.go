@@ -1,10 +1,10 @@
 package main
 
 import (
+	"fmt"
 	"httpfromtcp/internal/request"
 	"httpfromtcp/internal/response"
 	"httpfromtcp/internal/server"
-	"io"
 	"log"
 	"os"
 	"os/signal"
@@ -13,31 +13,70 @@ import (
 
 const port = 42069
 
-func Handler(w io.Writer, r *request.Request)*server.HandlerError{
+const badResponse = `<html>
+  <head>
+    <title>400 Bad Request</title>
+  </head>
+  <body>
+    <h1>Bad Request</h1>
+    <p>Your request honestly kinda sucked.</p>
+  </body>
+</html>`
+const internalServerError = `<html>
+  <head>
+    <title>500 Internal Server Error</title>
+  </head>
+  <body>
+    <h1>Internal Server Error</h1>
+    <p>Okay, you know what? This one is on me.</p>
+  </body>
+</html>`
+const successResponse = `<html>
+  <head>
+    <title>200 OK</title>
+  </head>
+  <body>
+    <h1>Success!</h1>
+    <p>Your request was an absolute banger.</p>
+  </body>
+</html>`
+
+func Handler(w *response.Writer, r *request.Request){
+	
 	switch r.RequestLine.RequestTarget{
 	case "/yourproblem":
+		
+		err := w.WriteStatusLine(response.BadRequest)
+		defaultHeaders := response.GetDefaultHeaders(len(badResponse))
+		defaultHeaders.SetDefaultHeader("Content-Type", "text/html")
 
-		return &server.HandlerError{
-			StatusCode:response.BadRequest,
-			Message:"Your problem is not my problem\n",
+		if err != nil{
+			fmt.Println(err)
 		}
+		err = w.WriteHeaders(defaultHeaders)
+		w.WriteBody([]byte(badResponse))
+
 	case "/myproblem":
+		err := w.WriteStatusLine(response.InternalServerError)
+		defaultHeaders := response.GetDefaultHeaders(len(internalServerError))
+		defaultHeaders.SetDefaultHeader("Content-Type", "text/html")
 
-		return &server.HandlerError{
-			StatusCode: response.InternalServerError,
-			Message:  "Woopsie, my bad\n",
+		if err != nil{
+			fmt.Println(err)
 		}
+		err = w.WriteHeaders(defaultHeaders)
+		_, err = w.WriteBody([]byte(internalServerError))
+
 	default:
-		body := []byte("All good, frfr\n")
-		_, err := w.Write(body)
-		if err!=nil{
-			return &server.HandlerError{
-				StatusCode: 500,
-				Message: "error in writing the body message",
-			}
+		err := w.WriteStatusLine(response.Success)
+		defaultHeaders := response.GetDefaultHeaders(len(successResponse))
+		defaultHeaders.SetDefaultHeader("Content-Type", "text/html")
 
+		if err != nil{
+			fmt.Println(err)
 		}
-		return nil
+		err = w.WriteHeaders(defaultHeaders)
+		w.WriteBody([]byte(successResponse))
 	}
 
 }

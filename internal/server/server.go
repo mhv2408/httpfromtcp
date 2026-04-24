@@ -1,11 +1,9 @@
 package server
 
 import (
-	"bytes"
 	"fmt"
 	"httpfromtcp/internal/request"
 	"httpfromtcp/internal/response"
-	"io"
 	"log"
 	"net"
 	"sync/atomic"
@@ -22,20 +20,13 @@ type Server struct{
 	handler Handler
 }
 
-type Handler func (w io.Writer, r *request.Request) *HandlerError
+type Handler func (w *response.Writer, r *request.Request)
 
 type HandlerError struct{
 	StatusCode response.StatusCode
 	Message string 
 }
-func writeError(w io.Writer, he *HandlerError){
-	response.WriteStatusLine(w, he.StatusCode)
 
-	default_headers := response.GetDefaultHeaders(len(he.Message))
-
-	response.WriteHeaders(w, default_headers)
-	w.Write([]byte(he.Message))
-}
 func Serve(port int, handler Handler)(*Server, error){
 	lsnr, err := net.Listen("tcp",  fmt.Sprintf(":%d",port))
 	if err != nil{
@@ -83,21 +74,11 @@ func (s *Server) handle(conn net.Conn){
 	// Parse the request
 	request, err := request.RequestFromReader(conn)
 	if err != nil{
-		writeError(conn, &HandlerError{StatusCode: 500, Message: err.Error()})
+		log.Fatalf("unable to request from reader: %s", err)
 	}
 	// create a new bytes buffer
-	writer := bytes.NewBuffer(nil)
-	he := s.handler(writer, request)
-	if he != nil{
-		writeError(writer, he)
-		conn.Write(writer.Bytes())
-		return
-	}
-	b := writer.Bytes()
-	response.WriteStatusLine(conn, response.Success)
-	headers := response.GetDefaultHeaders(len(b))
-	response.WriteHeaders(conn, headers)
-	conn.Write(b)
-
+	writer := &response.Writer{}
+	s.handler(writer, request)
+	conn.Write(writer.Body)
 	defer conn.Close()
 }
