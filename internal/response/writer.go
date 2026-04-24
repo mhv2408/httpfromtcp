@@ -21,7 +21,7 @@ type Writer struct{
 
 func (w *Writer)WriteStatusLine(statusCode StatusCode) error{
 	if w.writerState != StatusLine{
-		return fmt.Errorf("incorrect writer state: %s", w.writerState)
+		return fmt.Errorf("incorrect writer state: %d", w.writerState)
 	}
 	response := ""
 	switch statusCode{
@@ -45,7 +45,7 @@ func (w *Writer)WriteStatusLine(statusCode StatusCode) error{
 
 func (w *Writer)WriteHeaders(headers headers.Headers)error{
 	if w.writerState != Headers{
-		return fmt.Errorf("incorrect writer state: %s", w.writerState)
+		return fmt.Errorf("incorrect writer state: %d", w.writerState)
 	}
 	for key, val := range headers{
 		resp := fmt.Sprintf("%s: %s\r\n", key, val)
@@ -58,7 +58,7 @@ func (w *Writer)WriteHeaders(headers headers.Headers)error{
 
 func (w *Writer)WriteBody(p []byte) (int, error){
 	if w.writerState != Body{
-		return 0, fmt.Errorf("incorrect writer state: %s", w.writerState)
+		return 0, fmt.Errorf("incorrect writer state: %d", w.writerState)
 	}
 	w.Body = append(w.Body, p...)
 	return len(p), nil
