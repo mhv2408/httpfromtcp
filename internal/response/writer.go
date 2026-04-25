@@ -81,7 +81,7 @@ func (w *Writer) WriteChunkedBodyDone() (int, error){
 	if w.writerState != Body{
 		return 0, fmt.Errorf("incorrect writer state: %d", w.writerState)
 	}
-
-	w.Body = append(w.Body, []byte("0\r\n\r\n")...)
-	return 0, nil
+	final_body := []byte("0\r\n\r\n")
+	w.Body = append(w.Body, final_body...)
+	return len(final_body), nil
 }
