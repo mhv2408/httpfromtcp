@@ -22,4 +22,3 @@ func GetDefaultHeaders(contentLen int) headers.Headers{
 	return h
 }
 
-

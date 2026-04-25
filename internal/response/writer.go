@@ -64,3 +64,24 @@ func (w *Writer)WriteBody(p []byte) (int, error){
 	return len(p), nil
 
 }
+
+func (w *Writer) WriteChunkedBody(p []byte) (int, error){
+	if w.writerState != Body{
+		return 0, fmt.Errorf("incorrect writer state: %d", w.writerState)
+	}
+	chunk_size := len(p)
+	hex_n := fmt.Sprintf("%x", chunk_size)
+	chunk_body := []byte(hex_n + "\r\n")
+	w.Body = append(w.Body, chunk_body...)
+	w.Body = append(w.Body, p...)
+	w.Body = append(w.Body, []byte("\r\n")...)
+	return len(chunk_body) + chunk_size + 2, nil // 2 for the last "\r\n"
+}
+func (w *Writer) WriteChunkedBodyDone() (int, error){
+	if w.writerState != Body{
+		return 0, fmt.Errorf("incorrect writer state: %d", w.writerState)
+	}
+
+	w.Body = append(w.Body, []byte("0\r\n\r\n")...)
+	return 0, nil
+}

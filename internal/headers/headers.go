@@ -61,6 +61,15 @@ func (h Headers)Set(key, value string){
 	}
 	h[key] = h.Get(key) + ", " + value
 }
+func (h Headers)Remove(key string){
+	key = strings.ToLower(key)
+	delete(h, key)
+}
+func (h Headers)Override(key, value string){
+	key = strings.ToLower(key)
+	h[key] = value
+}
+
 func (h Headers)SetDefaultHeader(key, value string){
 	key = strings.ToLower(key)
 	h[key] = value

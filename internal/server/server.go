@@ -77,7 +77,9 @@ func (s *Server) handle(conn net.Conn){
 		log.Fatalf("unable to request from reader: %s", err)
 	}
 	// create a new bytes buffer
+
 	writer := &response.Writer{}
+	
 	s.handler(writer, request)
 	conn.Write(writer.Body)
 	defer conn.Close()
