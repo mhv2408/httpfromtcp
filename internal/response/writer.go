@@ -3,12 +3,14 @@ package response
 import (
 	"fmt"
 	"httpfromtcp/internal/headers"
+	"strings"
 )
 type WriterState int
 const (
 	StatusLine WriterState = iota
 	Headers 
 	Body
+	Trailer
 )
 
 type Writer struct{
@@ -47,6 +49,7 @@ func (w *Writer)WriteHeaders(headers headers.Headers)error{
 	if w.writerState != Headers{
 		return fmt.Errorf("incorrect writer state: %d", w.writerState)
 	}
+	w.Headers = headers
 	for key, val := range headers{
 		resp := fmt.Sprintf("%s: %s\r\n", key, val)
 		w.Body = append(w.Body, []byte(resp)...)
@@ -81,7 +84,23 @@ func (w *Writer) WriteChunkedBodyDone() (int, error){
 	if w.writerState != Body{
 		return 0, fmt.Errorf("incorrect writer state: %d", w.writerState)
 	}
-	final_body := []byte("0\r\n\r\n")
+	var final_body []byte
+	final_body = []byte("0\r\n")
 	w.Body = append(w.Body, final_body...)
+	w.writerState = Trailer
 	return len(final_body), nil
+}
+func(w *Writer) WriteTrailers(h headers.Headers)error{
+	if w.writerState  != Trailer{
+		return fmt.Errorf("incorrect writer state: %d", w.writerState)
+	}
+	trailers := strings.Split(h.Get("trailer"), ",")
+	for _, key := range trailers{
+		key = strings.TrimSpace(key)
+		resp := fmt.Sprintf("%s: %s\r\n", key, h.Get(key))
+		w.Body = append(w.Body, []byte(resp)...)
+	}
+	w.Body = append(w.Body, []byte("\r\n")...)
+	
+	return nil
 }

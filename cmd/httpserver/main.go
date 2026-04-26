@@ -1,6 +1,7 @@
 package main
 
 import (
+	"crypto/sha256"
 	"fmt"
 	"httpfromtcp/internal/request"
 	"httpfromtcp/internal/response"
@@ -45,42 +46,50 @@ const successResponse = `<html>
 </html>`
 
 func ProxyHandler(w *response.Writer, r *request.Request){
-	// 
-	resp, err := http.Get("https://httpbin.org/stream/100")
-	if err!=nil{
-		log.Fatalf("unable to get the response form http request: %s", err.Error())
+	target := strings.TrimPrefix(r.RequestLine.RequestTarget, "/httpbin/")
+	
+	endPoint := "https://httpbin.org/" + target
+	resp, err := http.Get(endPoint)
+	if err != nil{
+		log.Fatalf("unable to perform HTTP GET: %s", err.Error())
 	}
-	w.WriteStatusLine(response.Success)
+	defer resp.Body.Close()
+
 	defaultHeaders := response.GetDefaultHeaders(0)
 	defaultHeaders.Remove("Content-Length")
-	defaultHeaders.Override("Transfer-Encoding", "chunked")
+	defaultHeaders.Set("Trailer","X-Content-Sha256")
+	defaultHeaders.Set("Trailer","X-Content-Length")
+	defaultHeaders.Set("Transfer-Encoding", "chunked")
+	w.WriteStatusLine(response.Success)
 	w.WriteHeaders(defaultHeaders)
-	defer resp.Body.Close()
 	data := make([]byte, 1024)
-	for { 
+	bytesRead := 0
+	var fullBody []byte
+	for {
 		n, err := resp.Body.Read(data)
-		fmt.Println("Read", n, "bytes")
-		if n>0{
-			_, err := w.WriteChunkedBody(data[:n])
-			if err!=nil{	
-				fmt.Println("Error writing chunks: ",err)
+		if err!=nil{
+			if err == io.EOF{
 				break
 			}
-
-		}
-		if err!=nil{	
-			fmt.Println("Error reading response: ",err)
+			fmt.Printf("unable to read from response: %s", err.Error())
 			break
 		}
-		if err == io.EOF{
+		_, err = w.WriteChunkedBody(data[:n])
+		
+		if err != nil{
+			fmt.Println("unable to write the chunked body response ", err)
 			break
 		}
+		fullBody = append(fullBody, data[:n]...)
+		bytesRead += n
 	}
 	
-	_, err = w.WriteChunkedBodyDone()
-	if err != nil{
-		fmt.Println("error writing chunked body done", err)
-	}
+	shaSum := fmt.Sprintf("%x", sha256.Sum256(fullBody))
+	defaultHeaders.SetDefaultHeader("X-Content-SHA256", shaSum)
+	defaultHeaders.SetDefaultHeader("X-Content-Length", fmt.Sprint(bytesRead))
+	w.WriteChunkedBodyDone()
+	w.WriteTrailers(defaultHeaders)	
+	
 }
 
 func Handler(w *response.Writer, r *request.Request){

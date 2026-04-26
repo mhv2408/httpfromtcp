@@ -76,7 +76,7 @@ func (h Headers)SetDefaultHeader(key, value string){
 }
 
 func (h Headers)Get(key string) string{
-	key = strings.ToLower((key))
+	key = strings.ToLower(key)
 	
 	return h[key]
 }
