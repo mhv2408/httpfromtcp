@@ -44,6 +44,28 @@ const successResponse = `<html>
     <p>Your request was an absolute banger.</p>
   </body>
 </html>`
+func VideoHandler(w *response.Writer, r *request.Request){
+	
+	// read the entire video
+	data, err := os.ReadFile("assets/vim.mp4")
+	headers := response.GetDefaultHeaders(len(data))
+	headers.Override("Content-Type", "video/mp4")
+	if err!=nil{
+		fmt.Println("cannot read the file", err)
+	}
+	err = w.WriteStatusLine(response.Success)
+	if err!=nil{
+		fmt.Println("error writing status line:", err)
+	}
+	err = w.WriteHeaders(headers)
+	if err!=nil{
+		fmt.Println("error writing headers:", err)
+	}
+	_, err = w.WriteBody(data)
+	if err!=nil{
+		fmt.Println("error writing body:", err)
+	}
+}
 
 func ProxyHandler(w *response.Writer, r *request.Request){
 	target := strings.TrimPrefix(r.RequestLine.RequestTarget, "/httpbin/")
@@ -96,6 +118,10 @@ func Handler(w *response.Writer, r *request.Request){
 
 	if strings.HasPrefix(r.RequestLine.RequestTarget, "/httpbin"){
 		ProxyHandler(w, r)
+		return
+	}
+	if strings.HasPrefix(r.RequestLine.RequestTarget, "/video"){
+		VideoHandler(w, r)
 		return
 	}
 	
